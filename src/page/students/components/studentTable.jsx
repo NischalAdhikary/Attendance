@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import {
   Table,
   TableBody,
@@ -7,7 +7,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
+} from "../../../components/ui/table";
 import {
   AlertDialog,
   AlertDialogTrigger,
@@ -17,221 +17,257 @@ import {
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogCancel,
-  AlertDialogAction,
-} from "@/components/ui/alert-dialog";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Edit, Trash } from "lucide-react";
-import SimpleComboBox from "@/components/layout/ComboBox";
+} from "../../../components/ui/alert-dialog";
+import { Button } from "../../../components/ui/button";
+import { Input } from "../../../components/ui/input";
+import { Edit, Trash, Loader2 } from "lucide-react";
+import SimpleComboBox from "../../../components/layout/ComboBox";
+import { 
+  useGetStudents, 
+  useUpdateStudent, 
+  useDeleteStudent 
+} from "../../../hooks/students/getStudents";
+import { toast } from "react-toastify";
 
-// ── Options ────────────────────────────────────────────────
-const sections = [
-  { label: "A", value: "A" },
-  { label: "B", value: "B" },
-  { label: "C", value: "C" },
-];
 
-const classes = [
-  { label: "10", value: "10" },
-  { label: "8",  value: "8"  },
-];
-
-// ── Demo students (in real app this comes from props/API) ──
-const INITIAL_STUDENTS = [
-  { id: 1, rollNo: 1, name: "Ram Sharma",  class: "10", section: "A" },
-  { id: 2, rollNo: 2, name: "Sita Thapa",  class: "10", section: "A" },
-  { id: 3, rollNo: 3, name: "Hari Lama",   class: "8",  section: "B" },
-  { id: 4, rollNo: 4, name: "Nima Gurung", class: "8",  section: "B" },
-];
-
-// ── Edit Modal ─────────────────────────────────────────────
-// Reuses the same form layout as your StudentForm
-function EditStudentModal({ student, onSave }) {
-  const [open, setOpen]     = useState(false);
-  const [value, setValue]   = useState(null);
+function EditStudentModal({ student, onSave, classSectionData, classOptions }) {
+  const [open, setOpen] = useState(false);
+  const [value, setValue] = useState(null);
 
   const handleOpen = () => {
-    // pre-fill form with current student data
+    const sId = student.id || student.student_id;
+    
+    if (!sId) {
+      console.error("Critical: Student object is missing an ID field", student);
+    }
+
     setValue({
-      fullname: student.name,
-      rollNo:   String(student.rollNo),
-      class:    student.class,
-      section:  student.section,
+      fullname: student.full_name || "",
+      rollNo: String(student.roll_no || ""),
+      class: String(student.class_id || ""),
+      section: String(student.section_id || ""),
     });
     setOpen(true);
   };
 
-  const handleSave = () => {
-    if (!value.fullname || !value.rollNo || !value.class || !value.section) return;
-    onSave({
-      ...student,
-      name:    value.fullname,
-      rollNo:  Number(value.rollNo),
-      class:   value.class,
-      section: value.section,
-    });
+  const sectionOptions = useMemo(() => {
+    if (!value?.class) return [];
+    return classSectionData
+      .filter((item) => String(item.class_id) === String(value.class))
+      .map((item) => ({
+        label: item.section_name,
+        value: String(item.id), // This 'id' is the section_id
+      }));
+  }, [classSectionData, value?.class]);
+
+  const handleSaveInternal = () => {
+    const sId = student.id || student.student_id;
+    
+    if (!value?.fullname || !value?.rollNo || !value?.section) {
+        alert("Please fill all fields");
+        return;
+    }
+
+    const payload = {
+      full_name: value.fullname,
+      roll_no: Number(value.rollNo),
+      section_id: Number(value.section),
+    }
+
+    onSave(sId, payload);
     setOpen(false);
   };
 
   return (
-    <AlertDialog open={open} onOpenChange={setOpen}>
+    <AlertDialog  open={open} onOpenChange={setOpen}>
       <AlertDialogTrigger asChild>
-        <Button size="icon" onClick={handleOpen}>
-          <Edit size={16} />
+        <Button size="icon" variant="ghost" onClick={handleOpen}>
+          <Edit size={16} className="" />
         </Button>
       </AlertDialogTrigger>
 
-      <AlertDialogContent>
+      <AlertDialogContent className="w-full ">
         <AlertDialogHeader>
-          <AlertDialogTitle className="mb-4 text-center w-full">
+          <AlertDialogTitle className="text-center text-xl font-bold">
             Edit Student
           </AlertDialogTitle>
-
-          <AlertDialogDescription className="w-full">
+          <AlertDialogDescription className="text-left py-4 w-full">
             {value && (
-              <form className="space-y-6" onSubmit={(e) => e.preventDefault()}>
-
-                <div className="flex flex-col gap-2">
-                  <label className="text-lg font-semibold text-foreground">Full Name</label>
+              <div className="space-y-4 w-full ">
+                <div className="space-y-1">
+                  <label className="text-sm font-medium">Full Name</label>
                   <Input
-                    placeholder="Ram Shah..."
                     value={value.fullname}
-                    onChange={(e) => setValue({ ...value, fullname: e.target.value })}
+                    onChange={(e) => setValue(p => ({ ...p, fullname: e.target.value }))}
                   />
                 </div>
 
-                <div className="flex flex-col gap-2">
-                  <label className="text-lg font-semibold text-foreground">Roll No</label>
+                <div className="space-y-1">
+                  <label className="text-sm font-medium">Roll No</label>
                   <Input
-                    placeholder="1"
                     type="number"
                     value={value.rollNo}
-                    onChange={(e) => setValue({ ...value, rollNo: e.target.value })}
+                    onChange={(e) => setValue(p => ({ ...p, rollNo: e.target.value }))}
                   />
                 </div>
 
-                <div className="flex flex-col gap-2">
-                  <label className="text-lg font-semibold text-foreground">Class</label>
+                <div className="space-y-1">
+                  <label className="text-sm font-medium">Class</label>
                   <SimpleComboBox
-                    options={classes}
+                    options={classOptions}
                     value={value.class}
                     field="class"
                     setValue={setValue}
+                    onSelect={() => setValue(p => ({ ...p, section: "" }))}
                     placeholder="Select Class"
                   />
                 </div>
 
-                <div className="flex flex-col gap-2">
-                  <label className="text-lg font-semibold text-foreground">Section</label>
+                <div className="space-y-1">
+                  <label className="text-sm font-medium">Section</label>
                   <SimpleComboBox
-                    options={sections}
+                    options={sectionOptions}
                     value={value.section}
                     field="section"
                     setValue={setValue}
-                    placeholder="Select Section"
+                    placeholder={value.class ? "Select Section" : "Choose class first"}
+                    disabled={!value.class}
                   />
                 </div>
-
-              </form>
+              </div>
             )}
           </AlertDialogDescription>
         </AlertDialogHeader>
 
         <AlertDialogFooter>
-          <AlertDialogCancel onClick={() => setOpen(false)}>
-            Cancel
-          </AlertDialogCancel>
-          <AlertDialogAction onClick={handleSave}>
-            Save Changes
-          </AlertDialogAction>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <Button onClick={handleSaveInternal}>Update Student</Button>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
   );
 }
 
-// ── Delete Confirm Modal ───────────────────────────────────
 function DeleteStudentModal({ student, onDelete }) {
+  const sId = student.id || student.student_id;
   return (
     <AlertDialog>
       <AlertDialogTrigger asChild>
-        <Button className="bg-red-500 hover:bg-red-600" size="icon">
-          <Trash size={16} />
+        <Button variant="ghost" size="icon">
+          <Trash size={16} className="text-red-500" />
         </Button>
       </AlertDialogTrigger>
-
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Delete Student</AlertDialogTitle>
+          <AlertDialogTitle>Delete Student?</AlertDialogTitle>
           <AlertDialogDescription>
-            Are you sure you want to delete{" "}
-            <span className="font-semibold text-foreground">{student.name}</span>?
-            <br />
-            This action cannot be undone.
+            Are you sure you want to remove <b>{student.full_name}</b>? This cannot be undone.
           </AlertDialogDescription>
         </AlertDialogHeader>
-
         <AlertDialogFooter>
           <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <AlertDialogAction
-            className="bg-red-500 hover:bg-red-600"
-            onClick={() => onDelete(student.id)}
-          >
+          <Button variant="destructive" onClick={() => onDelete(sId)}>
             Delete
-          </AlertDialogAction>
+          </Button>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
   );
 }
 
-// ── Main Table ─────────────────────────────────────────────
-export default function StudentTable() {
-  const [students, setStudents] = useState(INITIAL_STUDENTS);
+export default function StudentTable({ classSectionData, classOptions }) {
+  const { data: response, isLoading, isError, error } = useGetStudents();
+  const updateMutation = useUpdateStudent();
+  const deleteMutation = useDeleteStudent();
 
-  const handleEdit = (updated) => {
-    setStudents((prev) =>
-      prev.map((s) => (s.id === updated.id ? updated : s))
+  if (isLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 gap-2">
+        <Loader2 className="animate-spin text-primary" size={32} />
+        <p className="text-muted-foreground">Loading student records...</p>
+      </div>
     );
-  };
+  }
 
-  const handleDelete = (id) => {
-    setStudents((prev) => prev.filter((s) => s.id !== id));
-  };
+  if (isError) {
+    return (
+      <div className="p-4 my-10 bg-red-50 border border-red-200 text-red-700 rounded-md">
+        <p className="font-bold">Error loading data:</p>
+        <p className="text-sm">{error?.response?.data?.detail || error.message}</p>
+      </div>
+    );
+  }
 
+  const students = response?.data || [];
+
+ const handleEditSave = (id, updatedData) => {
+  updateMutation.mutate(
+    { id, data: updatedData },
+    {
+      onSuccess: () => {
+        toast.success("Student updated successfully ");
+      },
+      onError: (err) => {
+        toast.error(err?.response?.data?.detail || "Update failed ");
+      },
+    }
+  );
+};
+const handleDelete = (id) => {
+  deleteMutation.mutate(id, {
+    onSuccess: () => {
+      toast.success("Student deleted successfully ");
+    },
+    onError: (err) => {
+      toast.error(err?.response?.data?.detail || "Delete failed ");
+    },
+  });
+};
   return (
-    <Table className="mt-10">
-      <TableCaption>List of Students</TableCaption>
-
-      <TableHeader>
-        <TableRow>
-          <TableHead>Roll No</TableHead>
-          <TableHead>Full Name</TableHead>
-          <TableHead>Class</TableHead>
-          <TableHead>Section</TableHead>
-          <TableHead>Action</TableHead>
-        </TableRow>
-      </TableHeader>
-
-      <TableBody>
-        {students.map((s) => (
-          <TableRow key={s.id}>
-            <TableCell>{s.rollNo}</TableCell>
-            <TableCell>{s.name}</TableCell>
-            <TableCell>{s.class}</TableCell>
-            <TableCell>{s.section}</TableCell>
-            <TableCell className="flex gap-2">
-
-              {/* Edit — pre-fills form with current data */}
-              <EditStudentModal student={s} onSave={handleEdit} />
-
-              {/* Delete — asks for confirmation */}
-              <DeleteStudentModal student={s} onDelete={handleDelete} />
-
-            </TableCell>
+    <div className="mt-8 border rounded-lg overflow-hidden bg-white shadow-sm">
+      <Table>
+        <TableCaption className="pb-4">Registered Students List</TableCaption>
+        <TableHeader className="bg-slate-50">
+          <TableRow>
+            <TableHead className="w-[100px] font-bold">Roll No</TableHead>
+            <TableHead className="font-bold">Full Name</TableHead>
+            <TableHead className="font-bold">Class</TableHead>
+            <TableHead className="font-bold">Section</TableHead>
+            <TableHead className="text-right font-bold">Actions</TableHead>
           </TableRow>
-        ))}
-      </TableBody>
-    </Table>
+        </TableHeader>
+        <TableBody>
+          {students.length === 0 ? (
+            <TableRow>
+              <TableCell colSpan={5} className="text-center py-10 text-muted-foreground">
+                No students found in the database.
+              </TableCell>
+            </TableRow>
+          ) : (
+            students.map((s) => (
+              <TableRow key={s.id || s.student_id}>
+                <TableCell className="font-medium text-blue-700">#{s.roll_no}</TableCell>
+                <TableCell className="font-semibold">{s.full_name}</TableCell>
+                <TableCell>{s.class_name}</TableCell>
+                <TableCell>
+                  <span className="px-2 py-1 bg-slate-100 rounded text-xs border">
+                    {s.section_name}
+                  </span>
+                </TableCell>
+                <TableCell className="flex justify-end gap-1">
+                  <EditStudentModal
+                    student={s}
+                    onSave={handleEditSave}
+                    classSectionData={classSectionData}
+                    classOptions={classOptions}
+                  />
+                  <DeleteStudentModal student={s} onDelete={handleDelete} />
+                </TableCell>
+              </TableRow>
+            ))
+          )}
+        </TableBody>
+      </Table>
+    </div>
   );
 }

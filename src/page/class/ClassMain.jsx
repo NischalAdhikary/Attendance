@@ -7,10 +7,10 @@ import ClassForm from './components/classForm';
 export default function ClassMain() {
   
   const [classDetails,setClassDetails]=useState({
-    class:'',
-    section:''
+    class_name:'',
+    section_name:''
   })
-  console.log("class details",classDetails)
+ 
   
   return (
  <>

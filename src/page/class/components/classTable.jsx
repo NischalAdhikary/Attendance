@@ -6,97 +6,221 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table"
-import { Edit,Trash } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import DeleteClass from "./deleteClass";
-import ClassForm from "./classForm";
+} from "../../../components/ui/table";
+import { MoreVertical, Pencil, Trash2 } from "lucide-react";
+import { Button } from "../../../components/ui/button";
 import { useState } from "react";
-import EditClassForm from "./classEditForm";
-import ClassEditForm from "./classEditForm";
-const classes = [
-  { class: 1, section: 'A' },
-  { class: 1, section: 'B' },
+import { useClasses } from "../../../hooks/classes/useClass";
+import EditClassForm from "./editClass";
+import EditSectionForm from "./editSection";
+import DeleteClassModal from "./deleteClassModal";
+import DeleteSectionModal from "./deleteSectionModal"
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from "../../../components/ui/dropdown-menu";
 
-  { class: 2, section: 'A' },
-  { class: 2, section: 'B' },
+export default function ClassTable({ setValue, value }) {
+  const [classModal, setClassModal] = useState(false);
+  const [sectionModal, setSectionModal] = useState(false);
+  const [deleteClassModal, setDeleteClassModal] = useState(false);
+  const [deleteSectionModal, setDeleteSectionModal] = useState(false);
+  const [deleteItem, setDeleteItem] = useState(null);
 
-  { class: 3, section: 'A' },
-  { class: 3, section: 'B' },
+  const {
+    data: classes = [],
+    isLoading,
+    isError,
+  } = useClasses();
 
-  { class: 4, section: 'A' },
-  { class: 4, section: 'B' },
+  const classData = classes?.data || [];
 
-  { class: 5, section: 'A' },
-  { class: 5, section: 'B' },
+  if (isLoading) {
+    return <p>Loading classes...</p>;
+  }
 
-  { class: 6, section: 'A' },
-  { class: 6, section: 'B' },
+  if (isError) {
+    return <p>Failed to load classes</p>;
+  }
 
-  { class: 7, section: 'A' },
-  { class: 7, section: 'B' },
+  const handleEditClass = (c) => {
+    setValue({
+      id: c.id,
+      class_id: c.class_id,
+      class: c.class_name,
+      section: c.section_name,
+    });
+    setClassModal(true);
+  };
 
-  { class: 8, section: 'A' },
-  { class: 8, section: 'B' },
+  const handleEditSection = (c) => {
+    setValue({
+      id: c.id,
+      class_id: c.class_id,
+      class: c.class_name,
+      section: c.section_name,
+    });
+    setSectionModal(true);
+  };
 
-  { class: 9, section: 'A' },
-  { class: 9, section: 'B' },
+  const openDeleteClassModal = (c) => {
+    setDeleteItem(c);
+    setDeleteClassModal(true);
+  };
 
-  { class: 10, section: 'A' },
-  { class: 10, section: 'B' }
-];
+  const openDeleteSectionModal = (c) => {
+    setDeleteItem(c);
+    setDeleteSectionModal(true);
+  };
 
+  const handleSaveClass = (data) => {
+    console.log("save class", data);
+    setClassModal(false);
+    resetForm();
+  };
 
-export default function ClassTable({setValue,value}) {
-  const [modal,setModal]=useState(false)
-  
-  
+  const handleSaveSection = (data) => {
+    console.log("save section", data);
+    setSectionModal(false);
+    resetForm();
+  };
+
+  const handleDeleteClass = (item) => {
+    console.log("delete class", item.class_id);
+    setDeleteClassModal(false);
+    setDeleteItem(null);
+  };
+
+  const handleDeleteSection = (item) => {
+    console.log("delete section", item.id);
+    setDeleteSectionModal(false);
+    setDeleteItem(null);
+  };
+
+  const resetForm = () => {
+    setValue({
+      id: "",
+      class_id: "",
+      class: "",
+      section: "",
+    });
+  };
+
   return (
-   <Table>
-    <TableCaption>
-    List of Classes 
-    </TableCaption>
-    <TableHeader >
-        <TableRow>
+    <>
+      <Table>
+        <TableCaption>List of Classes</TableCaption>
+
+        <TableHeader>
+          <TableRow>
             <TableHead>Class</TableHead>
-             <TableHead>Section</TableHead>
-              <TableHead>Action</TableHead>
+            <TableHead>Section</TableHead>
+            <TableHead>Action</TableHead>
+          </TableRow>
+        </TableHeader>
 
-        </TableRow>
-          
-    </TableHeader>
-    <TableBody>
-{classes.map((c,i)=>
-<TableRow key={i}>
-    <TableCell >{c.class}</TableCell>
-    <TableCell>{c.section}</TableCell>
-    <TableCell className={'flex gap-2'}>
+        <TableBody>
+          {classData.length > 0 ? (
+            classData.map((c) => (
+              <TableRow key={c.id}>
+                <TableCell>{c.class_name}</TableCell>
+                <TableCell>{c.section_name}</TableCell>
+                <TableCell>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon">
+                        <MoreVertical className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
 
-       <Button onClick={()=>{setValue({class:c.class,section:c.section})
-      setModal(true)}}><Edit /></Button>
-           <DeleteClass />
-    </TableCell>
-</TableRow>
+                    <DropdownMenuContent align="end" className="w-48">
+                      <DropdownMenuItem onClick={() => handleEditClass(c)}>
+                        <Pencil className="mr-2 h-4 w-4" />
+                        Edit Class
+                      </DropdownMenuItem>
 
-)}
-    </TableBody>
-    <TableBody>
-      <TableRow>
-        <TableCell>
-             {
-      modal && <ClassEditForm onClose={()=>{setModal(false)
-        setValue({class:"",section:""})
-      }} editingClass={value} setEditingClass={setValue}/>
-    }
+                      <DropdownMenuItem onClick={() => handleEditSection(c)}>
+                        <Pencil className="mr-2 h-4 w-4" />
+                        Edit Section
+                      </DropdownMenuItem>
 
-        </TableCell>
-   
-      </TableRow>
-    
+                      <DropdownMenuItem
+                        onClick={() => openDeleteClassModal(c)}
+                        className="text-red-600"
+                      >
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        Delete Class
+                      </DropdownMenuItem>
 
-    </TableBody>
-   
+                      <DropdownMenuItem
+                        onClick={() => openDeleteSectionModal(c)}
+                        className="text-red-600"
+                      >
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        Delete Section
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </TableCell>
+              </TableRow>
+            ))
+          ) : (
+            <TableRow>
+              <TableCell colSpan={3} className="text-center">
+                No classes found
+              </TableCell>
+            </TableRow>
+          )}
+        </TableBody>
+      </Table>
 
-   </Table>
-  )
+      {classModal && (
+        <EditClassForm
+          editingClass={value}
+          setEditingClass={setValue}
+          handleSaveClass={handleSaveClass}
+          onClose={() => {
+            setClassModal(false);
+            resetForm();
+          }}
+        />
+      )}
+
+      {sectionModal && (
+        <EditSectionForm
+          editingClass={value}
+          setEditingClass={setValue}
+          handleSaveSection={handleSaveSection}
+          onClose={() => {
+            setSectionModal(false);
+            resetForm();
+          }}
+        />
+      )}
+
+      {deleteClassModal && deleteItem && (
+        <DeleteClassModal
+          deleteItem={deleteItem}
+          handleDeleteClass={handleDeleteClass}
+          onClose={() => {
+            setDeleteClassModal(false);
+            setDeleteItem(null);
+          }}
+        />
+      )}
+
+      {deleteSectionModal && deleteItem && (
+        <DeleteSectionModal
+          deleteItem={deleteItem}
+          handleDeleteSection={handleDeleteSection}
+          onClose={() => {
+            setDeleteSectionModal(false);
+            setDeleteItem(null);
+          }}
+        />
+      )}
+    </>
+  );
 }

@@ -1,10 +1,18 @@
 import React, { useState, useRef, useEffect } from "react";
 
-export default function SimpleComboBox({ label, options, value, setValue, field, placeholder }) {
+export default function SimpleComboBox({
+  label,
+  options = [],
+  value,
+  setValue,
+  field,
+  placeholder,
+  onSelect,
+}) {
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState("");
-  const ref = useRef();
-  const inputRef = useRef();
+  const ref = useRef(null);
+  const inputRef = useRef(null);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -13,11 +21,11 @@ export default function SimpleComboBox({ label, options, value, setValue, field,
         setSearch("");
       }
     };
+
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
- 
   useEffect(() => {
     if (isOpen && inputRef.current) {
       inputRef.current.focus();
@@ -28,10 +36,12 @@ export default function SimpleComboBox({ label, options, value, setValue, field,
     opt.label.toLowerCase().includes(search.toLowerCase())
   );
 
-  const selectedLabel = options.find((opt) => opt.value === value)?.label;
+  const selectedLabel = options.find(
+    (opt) => String(opt.value) === String(value)
+  )?.label;
 
   const handleOpen = () => {
-    setIsOpen(!isOpen);
+    setIsOpen((prev) => !prev);
     if (!isOpen) setSearch("");
   };
 
@@ -40,15 +50,17 @@ export default function SimpleComboBox({ label, options, value, setValue, field,
       {label && <label className="font-semibold text-black">{label}</label>}
 
       <div
-        className="border rounded px-2 py-1 w-full cursor-pointer"
+        className="border rounded px-2 py-2 w-full cursor-pointer bg-white"
         onClick={handleOpen}
       >
         {selectedLabel || placeholder || "Select..."}
       </div>
 
       {isOpen && (
-        <div className="absolute bg-white border rounded w-full mt-1 z-50 shadow-lg" style={{ top: "100%" }}>
-          {/* Search input */}
+        <div
+          className="absolute bg-white border rounded w-full mt-1 z-50 shadow-lg"
+          style={{ top: "100%" }}
+        >
           <div className="p-2 border-b">
             <input
               ref={inputRef}
@@ -61,14 +73,22 @@ export default function SimpleComboBox({ label, options, value, setValue, field,
             />
           </div>
 
-          {/* Options list */}
           <div className="max-h-48 overflow-auto">
             {filtered.map((opt) => (
               <div
                 key={opt.value}
-                className={`px-2 py-2 hover:bg-gray-100 cursor-pointer ${opt.value === value ? "bg-blue-50 font-semibold" : ""}`}
+                className={`px-2 py-2 hover:bg-gray-100 cursor-pointer ${
+                  String(opt.value) === String(value)
+                    ? "bg-blue-50 font-semibold"
+                    : ""
+                }`}
                 onClick={() => {
                   setValue((prev) => ({ ...prev, [field]: opt.value }));
+
+                  if (onSelect) {
+                    onSelect(opt);
+                  }
+
                   setIsOpen(false);
                   setSearch("");
                 }}
@@ -76,8 +96,11 @@ export default function SimpleComboBox({ label, options, value, setValue, field,
                 {opt.label}
               </div>
             ))}
+
             {filtered.length === 0 && (
-              <div className="px-2 py-2 text-gray-400 text-sm">No options found</div>
+              <div className="px-2 py-2 text-gray-400 text-sm">
+                No options found
+              </div>
             )}
           </div>
         </div>

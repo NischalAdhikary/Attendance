@@ -121,14 +121,10 @@ export default function AdminLayout() {
 
       
         <main className="flex-1 w-full">
-            <div className="w-full p-2 border-b  flex justify-between items-center">
-                <SidebarTrigger />
-                <Button >Logout</Button>
-
-            </div>
+          
             
-          <div className="p-4">
- <Outlet />
+          <div className="p-4 bg-white">
+         <Outlet />
           </div>
          
         </main>
