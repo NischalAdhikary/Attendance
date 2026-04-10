@@ -1,0 +1,1 @@
+export const DeletePassWord = "1234";

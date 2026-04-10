@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   Table,
   TableBody,
@@ -20,15 +20,17 @@ import {
 } from "../../../components/ui/alert-dialog";
 import { Button } from "../../../components/ui/button";
 import { Input } from "../../../components/ui/input";
-import { Edit, Trash, Loader2 } from "lucide-react";
+import { Edit, Trash, Loader2, BarChart3 } from "lucide-react";
 import SimpleComboBox from "../../../components/layout/ComboBox";
-import { 
-  useGetStudents, 
-  useUpdateStudent, 
-  useDeleteStudent 
+import {
+  useGetStudents,
+  useUpdateStudent,
+  useDeleteStudent,
 } from "../../../hooks/students/getStudents";
 import { toast } from "react-toastify";
-
+import Pagination from "../../../components/layout/Pagination";
+import StudentAttendanceChartModal from "./studentChartModal";
+import { DeletePassWord } from "../../../lib/config";
 
 function EditStudentModal({ student, onSave, classSectionData, classOptions }) {
   const [open, setOpen] = useState(false);
@@ -36,7 +38,7 @@ function EditStudentModal({ student, onSave, classSectionData, classOptions }) {
 
   const handleOpen = () => {
     const sId = student.id || student.student_id;
-    
+
     if (!sId) {
       console.error("Critical: Student object is missing an ID field", student);
     }
@@ -56,49 +58,51 @@ function EditStudentModal({ student, onSave, classSectionData, classOptions }) {
       .filter((item) => String(item.class_id) === String(value.class))
       .map((item) => ({
         label: item.section_name,
-        value: String(item.id), // This 'id' is the section_id
+        value: String(item.id),
       }));
   }, [classSectionData, value?.class]);
 
   const handleSaveInternal = () => {
     const sId = student.id || student.student_id;
-    
+
     if (!value?.fullname || !value?.rollNo || !value?.section) {
-        alert("Please fill all fields");
-        return;
+      alert("Please fill all fields");
+      return;
     }
 
     const payload = {
       full_name: value.fullname,
       roll_no: Number(value.rollNo),
       section_id: Number(value.section),
-    }
+    };
 
     onSave(sId, payload);
     setOpen(false);
   };
 
   return (
-    <AlertDialog  open={open} onOpenChange={setOpen}>
+    <AlertDialog open={open} onOpenChange={setOpen}>
       <AlertDialogTrigger asChild>
         <Button size="icon" variant="ghost" onClick={handleOpen}>
-          <Edit size={16} className="" />
+          <Edit size={16} />
         </Button>
       </AlertDialogTrigger>
 
-      <AlertDialogContent className="w-full ">
+      <AlertDialogContent className="w-full">
         <AlertDialogHeader>
           <AlertDialogTitle className="text-center text-xl font-bold">
             Edit Student
           </AlertDialogTitle>
           <AlertDialogDescription className="text-left py-4 w-full">
             {value && (
-              <div className="space-y-4 w-full ">
+              <div className="space-y-4 w-full">
                 <div className="space-y-1">
                   <label className="text-sm font-medium">Full Name</label>
                   <Input
                     value={value.fullname}
-                    onChange={(e) => setValue(p => ({ ...p, fullname: e.target.value }))}
+                    onChange={(e) =>
+                      setValue((p) => ({ ...p, fullname: e.target.value }))
+                    }
                   />
                 </div>
 
@@ -107,7 +111,9 @@ function EditStudentModal({ student, onSave, classSectionData, classOptions }) {
                   <Input
                     type="number"
                     value={value.rollNo}
-                    onChange={(e) => setValue(p => ({ ...p, rollNo: e.target.value }))}
+                    onChange={(e) =>
+                      setValue((p) => ({ ...p, rollNo: e.target.value }))
+                    }
                   />
                 </div>
 
@@ -118,7 +124,7 @@ function EditStudentModal({ student, onSave, classSectionData, classOptions }) {
                     value={value.class}
                     field="class"
                     setValue={setValue}
-                    onSelect={() => setValue(p => ({ ...p, section: "" }))}
+                    onSelect={() => setValue((p) => ({ ...p, section: "" }))}
                     placeholder="Select Class"
                   />
                 </div>
@@ -150,23 +156,82 @@ function EditStudentModal({ student, onSave, classSectionData, classOptions }) {
 
 function DeleteStudentModal({ student, onDelete }) {
   const sId = student.id || student.student_id;
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+
+
+  
+
+  const handleConfirmDelete = () => {
+    if (!password.trim()) {
+      setError("Please enter password");
+      return;
+    }
+
+    if (password !== DeletePassWord) {
+      setError("Incorrect password");
+      return;
+    }
+
+    setError("");
+    onDelete(sId);
+    setPassword("");
+  };
+
   return (
-    <AlertDialog>
+    <AlertDialog
+      onOpenChange={(open) => {
+        if (!open) {
+          setPassword("");
+          setError("");
+        }
+      }}
+    >
       <AlertDialogTrigger asChild>
         <Button variant="ghost" size="icon">
           <Trash size={16} className="text-red-500" />
         </Button>
       </AlertDialogTrigger>
+
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>Delete Student?</AlertDialogTitle>
-          <AlertDialogDescription>
-            Are you sure you want to remove <b>{student.full_name}</b>? This cannot be undone.
+          <AlertDialogDescription className="space-y-3">
+            <p>
+              Are you sure you want to remove <b>{student.full_name}</b>? This cannot be undone.
+            </p>
+
+            <div className="space-y-1">
+              <label className="text-sm font-medium text-black">
+                Enter password to confirm
+              </label>
+              <Input
+                type="password"
+                placeholder="Enter password"
+                value={password}
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  if (error) setError("");
+                }}
+              />
+              {error && (
+                <p className="text-sm text-red-500">{error}</p>
+              )}
+            </div>
           </AlertDialogDescription>
         </AlertDialogHeader>
+
         <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <Button variant="destructive" onClick={() => onDelete(sId)}>
+          <AlertDialogCancel
+            onClick={() => {
+              setPassword("");
+              setError("");
+            }}
+          >
+            Cancel
+          </AlertDialogCancel>
+
+          <Button variant="destructive" onClick={handleConfirmDelete}>
             Delete
           </Button>
         </AlertDialogFooter>
@@ -179,6 +244,83 @@ export default function StudentTable({ classSectionData, classOptions }) {
   const { data: response, isLoading, isError, error } = useGetStudents();
   const updateMutation = useUpdateStudent();
   const deleteMutation = useDeleteStudent();
+  const [selectedStudent, setSelectedStudent] = useState(null);
+const [chartModalOpen, setChartModalOpen] = useState(false);
+
+const handleOpenChart = (student) => {
+  setSelectedStudent(student);
+  setChartModalOpen(true);
+};
+  const [currentPage, setCurrentPage] = useState(1);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [sortOrder, setSortOrder] = useState("asc");
+  const itemsPerPage = 10;
+
+  const students = response?.data || [];
+
+  const filteredAndSortedStudents = useMemo(() => {
+    const filtered = students.filter((student) =>
+      (student.full_name || "")
+        .toLowerCase()
+        .includes(searchTerm.toLowerCase())
+    );
+
+    const sorted = [...filtered].sort((a, b) => {
+      const nameA = (a.full_name || "").toLowerCase();
+      const nameB = (b.full_name || "").toLowerCase();
+
+      if (sortOrder === "asc") {
+        return nameA.localeCompare(nameB);
+      }
+
+      return nameB.localeCompare(nameA);
+    });
+
+    return sorted;
+  }, [students, searchTerm, sortOrder]);
+
+  const totalPages = Math.ceil(filteredAndSortedStudents.length / itemsPerPage);
+
+  const paginatedStudents = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return filteredAndSortedStudents.slice(startIndex, endIndex);
+  }, [filteredAndSortedStudents, currentPage]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, sortOrder]);
+
+  useEffect(() => {
+    if (currentPage > totalPages && totalPages > 0) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
+
+  const handleEditSave = (id, updatedData) => {
+    updateMutation.mutate(
+      { id, data: updatedData },
+      {
+        onSuccess: () => {
+          toast.success("Student updated successfully");
+        },
+        onError: (err) => {
+          toast.error(err?.response?.data?.detail || "Update failed");
+        },
+      }
+    );
+  };
+
+  const handleDelete = (id) => {
+    deleteMutation.mutate(id, {
+      onSuccess: () => {
+        toast.success("Student deleted successfully");
+      },
+      onError: (err) => {
+        toast.error(err?.response?.data?.detail || "Delete failed");
+      },
+    });
+  };
 
   if (isLoading) {
     return (
@@ -198,33 +340,30 @@ export default function StudentTable({ classSectionData, classOptions }) {
     );
   }
 
-  const students = response?.data || [];
-
- const handleEditSave = (id, updatedData) => {
-  updateMutation.mutate(
-    { id, data: updatedData },
-    {
-      onSuccess: () => {
-        toast.success("Student updated successfully ");
-      },
-      onError: (err) => {
-        toast.error(err?.response?.data?.detail || "Update failed ");
-      },
-    }
-  );
-};
-const handleDelete = (id) => {
-  deleteMutation.mutate(id, {
-    onSuccess: () => {
-      toast.success("Student deleted successfully ");
-    },
-    onError: (err) => {
-      toast.error(err?.response?.data?.detail || "Delete failed ");
-    },
-  });
-};
   return (
     <div className="mt-8 border rounded-lg overflow-hidden bg-white shadow-sm">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 border-b bg-slate-50">
+        <div className="w-full sm:max-w-sm">
+          <Input
+            placeholder="Search by student name..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </div>
+
+        <div className="flex items-center gap-2">
+          <label className="text-sm font-medium whitespace-nowrap">Sort by name</label>
+          <select
+            value={sortOrder}
+            onChange={(e) => setSortOrder(e.target.value)}
+            className="h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
+          >
+            <option value="asc">A to Z</option>
+            <option value="desc">Z to A</option>
+          </select>
+        </div>
+      </div>
+
       <Table>
         <TableCaption className="pb-4">Registered Students List</TableCaption>
         <TableHeader className="bg-slate-50">
@@ -236,15 +375,16 @@ const handleDelete = (id) => {
             <TableHead className="text-right font-bold">Actions</TableHead>
           </TableRow>
         </TableHeader>
+
         <TableBody>
-          {students.length === 0 ? (
+          {filteredAndSortedStudents.length === 0 ? (
             <TableRow>
               <TableCell colSpan={5} className="text-center py-10 text-muted-foreground">
-                No students found in the database.
+                No students found.
               </TableCell>
             </TableRow>
           ) : (
-            students.map((s) => (
+            paginatedStudents.map((s) => (
               <TableRow key={s.id || s.student_id}>
                 <TableCell className="font-medium text-blue-700">#{s.roll_no}</TableCell>
                 <TableCell className="font-semibold">{s.full_name}</TableCell>
@@ -255,6 +395,14 @@ const handleDelete = (id) => {
                   </span>
                 </TableCell>
                 <TableCell className="flex justify-end gap-1">
+                   <Button
+    size="icon"
+    variant="ghost"
+    onClick={() => handleOpenChart(s)}
+    title="View Attendance Chart"
+  >
+    <BarChart3 size={16} className="text-blue-600" />
+  </Button>
                   <EditStudentModal
                     student={s}
                     onSave={handleEditSave}
@@ -268,6 +416,19 @@ const handleDelete = (id) => {
           )}
         </TableBody>
       </Table>
+
+      <div className="flex justify-center py-4">
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={setCurrentPage}
+        />
+      </div>
+      <StudentAttendanceChartModal
+  student={selectedStudent}
+  open={chartModalOpen}
+  onOpenChange={setChartModalOpen}
+/>
     </div>
   );
 }

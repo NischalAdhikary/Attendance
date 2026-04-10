@@ -52,7 +52,6 @@ console.log(classSectionData,classOptions)
         isError={isError}
       />
 
-      <Pagination />
     </>
   );
 }

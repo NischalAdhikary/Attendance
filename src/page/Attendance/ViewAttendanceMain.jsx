@@ -118,7 +118,7 @@ function EditModal({ record, onSave, onCancel, loading }) {
             Cancel
           </button>
           <button
-            onClick={() => onSave({ id: record.id, status: editStatus, note: editNote })}
+            onClick={() => onSave({ id: record.attendance_id, status: editStatus, note: editNote })}
             disabled={loading}
             className="px-5 py-2 rounded-lg bg-gray-900 text-white text-sm font-semibold hover:bg-gray-700 disabled:opacity-60"
           >
@@ -193,6 +193,7 @@ export default function ViewAttendancePage() {
 
   // ── Handlers ──
   const handleSaveEdit = ({ id, status, note }) => {
+    console.log("checking id", id, "status", status, "note", note);
     updateRecord(
       { id, status, note },
       {
@@ -225,13 +226,12 @@ export default function ViewAttendancePage() {
     <div className="min-h-screen bg-gray-50 py-8 px-4">
       <div className="w-full mx-auto space-y-5">
 
-        {/* Header */}
+     
         <div>
           <h1 className="text-2xl font-bold text-gray-900">View Attendance</h1>
           <p className="text-sm text-gray-400 mt-0.5">Review, edit or delete attendance records</p>
         </div>
 
-        {/* Filters */}
         <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <SimpleComboBox
@@ -265,7 +265,6 @@ export default function ViewAttendancePage() {
           </div>
         </div>
 
-        {/* Empty states */}
         {!hasFilters && (
           <div className="text-center py-16 text-gray-300 text-sm">
             Select a class and section to view records
@@ -285,10 +284,10 @@ export default function ViewAttendancePage() {
           </div>
         )}
 
-        {/* Data */}
+
         {hasData && !isLoading && (
           <>
-            {/* Stats */}
+          
             <div className="flex gap-2">
               <StatPill label="Total"   count={counts.total} color="bg-gray-100 text-gray-600"  />
               <StatPill label="Present" count={counts.P}     color="bg-green-50 text-green-700" />
@@ -313,7 +312,7 @@ export default function ViewAttendancePage() {
               </button>
             </div>
 
-            {/* Records */}
+           
             <div className="space-y-2">
               {filtered.length === 0 ? (
                 <p className="text-center text-gray-300 text-sm py-8">
